@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cyfrowe.pl – Checkout 4-krokowy (dane → dostawa → płatność → gotowe)</title>
+<style>
+  :root{--red:#DD0031;--red-d:#b80028;--ink:#1a1a1a;--grey:#666;--line:#e0e0e0;--bg:#f5f5f5;--box:#f1f1f1;--green:#2E7D32}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Lato','Segoe UI',system-ui,Arial,sans-serif;font-size:14px;color:var(--ink);background:var(--bg);line-height:1.5}
+  a{color:var(--red);text-decoration:none}
+  .ck-header{display:flex;align-items:center;justify-content:space-between;padding:16px 24px;border-bottom:1px solid var(--line);background:#fff}
+  .logo{font-size:22px;font-weight:700;letter-spacing:-.5px;border:2px solid var(--ink);padding:4px 12px;line-height:1.2;color:var(--ink)}
+  .login-link{display:flex;align-items:center;gap:7px;font-size:13px;color:var(--ink);font-weight:600}
+  .login-link svg{width:18px;height:18px}
+  .secure-strip{background:#fff;border-bottom:1px solid var(--line);text-align:center;font-size:12px;color:var(--grey);padding:7px}
+  .secure-strip b{color:var(--green)}
+  .wrap{max-width:760px;margin:0 auto;padding:18px 16px 90px}
+  .stepper{display:flex;align-items:flex-start;justify-content:center;padding:20px 0 24px}
+  .step{display:flex;flex-direction:column;align-items:center;width:130px;text-align:center}
+  .step-circle{width:34px;height:34px;border-radius:50%;background:#e9e9e9;color:#999;display:flex;align-items:center;justify-content:center;font-weight:700;border:2px solid #e9e9e9}
+  .step.active .step-circle{background:var(--red);border-color:var(--red);color:#fff}
+  .step.done .step-circle{background:#fff;border-color:var(--green);color:var(--green);cursor:pointer}
+  .step-label{font-size:12px;color:#999;margin-top:7px;font-weight:600}
+  .step.active .step-label,.step.done .step-label{color:var(--ink)}
+  .step-bar{flex:1 1 auto;height:2px;background:#e9e9e9;margin-top:17px;min-width:18px;max-width:60px}
+  .step-bar.done{background:var(--green)}
+  .card{background:#fff;border:1px solid var(--line);border-radius:6px;padding:22px;margin-bottom:16px}
+  .card h2{font-size:18px;margin-bottom:4px}
+  .card .hint{color:var(--grey);font-size:13px;margin-bottom:16px}
+  label.fl{display:block;font-size:13px;color:var(--grey);margin:12px 0 5px}
+  label.fl b{color:var(--red)}
+  .note{font-size:11px;color:#999;padding:3px 0 0 2px}
+  input[type=text],input[type=email],input[type=tel]{width:100%;padding:11px 12px;border:2px solid #bbb;border-radius:4px;font-size:14px;font-family:inherit;background:#fff}
+  input:focus{outline:none;border-color:var(--red)}
+  .row2{display:flex;gap:12px}.row2>div{flex:1}
+  .login-box{background:var(--box);border-radius:4px;padding:12px 14px;font-size:13px;color:var(--grey);margin-top:14px}
+  .opt{border:2px solid #ddd;border-radius:5px;margin-top:10px;overflow:hidden;transition:border-color .15s}
+  .opt.sel{border-color:var(--red)}
+  .opt-head{display:flex;align-items:center;gap:12px;padding:13px 14px;cursor:pointer}
+  .radio{width:20px;height:20px;border-radius:50%;border:2px solid #bbb;flex:0 0 auto;display:flex;align-items:center;justify-content:center}
+  .opt.sel .radio{border-color:var(--red)}
+  .opt.sel .radio::after{content:"";width:10px;height:10px;border-radius:50%;background:var(--red)}
+  .opt-ico{width:42px;height:30px;border-radius:4px;background:#fff;border:1px solid var(--line);display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;flex:0 0 auto}
+  .opt-info{flex:1}.opt-info .nm{font-weight:700;font-size:14px}.opt-info .sub{display:block;font-size:12px;color:var(--grey)}
+  .opt-price{font-weight:700;font-size:14px}
+  .opt-body{max-height:0;overflow:hidden;transition:max-height .25s ease}.opt.sel .opt-body{max-height:700px}
+  .opt-body-in{padding:0 14px 14px 48px}
+  .group-title{font-size:12px;text-transform:uppercase;letter-spacing:.5px;color:var(--grey);font-weight:700;margin:18px 0 2px}
+  .map-btn{display:flex;align-items:center;gap:10px;border:1px dashed #bbb;border-radius:4px;padding:12px;cursor:pointer;font-size:13px;color:var(--grey);background:#fafafa}
+  .picked{background:#eef7ee;border:1px solid var(--green);border-radius:4px;padding:10px 12px;font-size:13px;margin-top:8px;display:none}.picked.vis{display:block}
+  .salon{display:flex;gap:10px;padding:9px 10px;border:1px solid var(--line);border-radius:4px;margin-top:8px;cursor:pointer}
+  .salon.sel{border-color:var(--red);background:#fff5f7}.salon .nm{font-weight:700;font-size:13px}.salon .ad{font-size:12px;color:var(--grey)}
+  .info-line{display:flex;align-items:flex-start;gap:8px;font-size:13px;color:var(--green);background:#eef7ee;border-radius:4px;padding:9px 12px;margin-top:12px}
+  .recipient-note{display:flex;align-items:flex-start;gap:8px;font-size:12px;color:var(--grey);background:var(--box);border-radius:4px;padding:9px 12px;margin-bottom:4px}
+  .summary{position:sticky;bottom:0;background:#fff;border:1px solid var(--line);border-radius:6px;padding:16px 18px;box-shadow:0 -4px 16px rgba(0,0,0,.05)}
+  .sum-row{display:flex;justify-content:space-between;font-size:14px;color:var(--grey);margin-bottom:4px}
+  .sum-tot{display:flex;justify-content:space-between;font-size:19px;font-weight:800;margin:8px 0 14px}
+  .btn{display:block;width:100%;background:var(--red);color:#fff;border:none;border-radius:4px;padding:15px;font-size:16px;font-weight:700;cursor:pointer;font-family:inherit}
+  .btn:hover{background:var(--red-d)}.btn:disabled{background:#e0a6b1;cursor:not-allowed}
+  .btn-ghost{background:#fff;color:var(--ink);border:2px solid #bbb;margin-top:10px}.btn-ghost:hover{background:#f3f3f3}
+  .trust{display:flex;gap:14px;justify-content:center;flex-wrap:wrap;margin-top:12px}
+  .trust span{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--grey)}
+  .trust svg{width:13px;height:13px;stroke:var(--green)}
+  .mini-cart{font-size:13px;color:var(--grey);margin-top:10px;border-top:1px dashed var(--line);padding-top:10px}
+  .mini-cart .it{display:flex;justify-content:space-between;padding:3px 0}
+  .consent{font-size:12px;color:var(--grey);display:flex;gap:9px;margin-top:14px;line-height:1.45}.consent input{margin-top:3px;flex:0 0 auto}
+  .done-ico{width:64px;height:64px;border-radius:50%;background:var(--green);color:#fff;display:flex;align-items:center;justify-content:center;font-size:34px;margin:0 auto 14px}
+  .conf-row{display:flex;justify-content:space-between;font-size:14px;padding:8px 0;border-bottom:1px solid var(--line)}.conf-row .l{color:var(--grey)}
+  .hidden{display:none}
+</style>
+</head>
+<body>
+<header class="ck-header">
+  <a class="logo" href="#">cyfr<span style="position:relative">o<span style="position:absolute;top:-7px;right:-1px;font-size:11px">&#176;</span></span>we.pl</a>
+  <a class="login-link" href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>Zaloguj</a>
+</header>
+<div class="secure-strip">&#128274; Zakupy w cyfrowe.pl są <b>bezpieczne</b> &middot; szyfrowane połączenie SSL</div>
+<div class="wrap">
+  <div class="stepper" id="stepper">
+    <div class="step active" data-s="1"><div class="step-circle">1</div><div class="step-label">Twoje dane</div></div>
+    <div class="step-bar"></div>
+    <div class="step" data-s="2"><div class="step-circle">2</div><div class="step-label">Dostawa</div></div>
+    <div class="step-bar"></div>
+    <div class="step" data-s="3"><div class="step-circle">3</div><div class="step-label">Płatność</div></div>
+    <div class="step-bar"></div>
+    <div class="step" data-s="4"><div class="step-circle">4</div><div class="step-label">Gotowe</div></div>
+  </div>
+  <div id="view1">
+    <div class="card">
+      <h2>Twoje dane</h2>
+      <p class="hint">Na początek tylko cztery informacje. Adres podasz dopiero przy dostawie kurierem.</p>
+      <div class="row2">
+        <div><label class="fl">Imię<b>*</b></label><input type="text" id="d-imie"></div>
+        <div><label class="fl">Nazwisko<b>*</b></label><input type="text" id="d-nazwisko"></div>
+      </div>
+      <label class="fl">E-mail<b>*</b></label><input type="email" id="d-email" placeholder="np. jan.kowalski@email.pl">
+      <div class="note">Na ten adres wyślemy potwierdzenie zamówienia.</div>
+      <label class="fl">Telefon<b>*</b></label><input type="tel" id="d-tel" placeholder="np. 600 100 200">
+      <div class="note">Na ten numer wyślemy status zamówienia.</div>
+      <div class="login-box">Masz już konto w cyfrowe.pl? <a href="#" onclick="return false">Zaloguj się</a>, aby przyspieszyć zakupy i zobaczyć historię zamówień. Możesz też kupić bez logowania.</div>
+    </div>
+    <div class="summary">
+      <div class="sum-row"><span>Wartość zamówienia</span><span>1 025 zł</span></div>
+      <div class="sum-tot"><span>Do zapłaty</span><span id="tot1">1 025 zł</span></div>
+      <button class="btn" onclick="go(2)">Dalej: sposób dostawy</button>
+      <div class="mini-cart">
+        <div class="it"><span>Plecak fotograficzny Lowepro Tahoe BP 150 (3 szt.)</span><span>837 zł</span></div>
+        <div class="it"><span>Pasek nadgarstkowy Peak Design Cuff</span><span>188 zł</span></div>
+      </div>
+    </div>
+  </div>
+  <div id="view2" class="hidden">
+    <div class="card">
+      <h2>Jak chcesz odebrać zamówienie?</h2>
+      <p class="hint">Przy odbiorze w punkcie nie prosimy o adres. Adres pojawia się tylko dla kuriera.</p>
+      <div class="group-title">Odbiór w punkcie &middot; bez adresu</div>
+      <div class="opt" data-m="paczkomat" onclick="selDel(this)">
+        <div class="opt-head"><div class="radio"></div><div class="opt-ico">&#128230;</div>
+          <div class="opt-info"><span class="nm">InPost Paczkomat 24/7</span><span class="sub">dostawa: wt. 4 marca</span></div><div class="opt-price">14 zł</div></div>
+        <div class="opt-body"><div class="opt-body-in">
+          <div class="map-btn" onclick="pickLocker(event)">&#128205; Wybierz paczkomat na mapie</div>
+          <div class="picked" id="locker-picked">&#10003; Wybrany paczkomat: <b>WAW31N</b>, ul. Siedmiogrodzka 11, Warszawa &nbsp;<a href="#" onclick="pickLocker(event);return false">zmień</a></div>
+          <div class="info-line">&#128274; Nie podajesz adresu domowego. Paczka czeka w paczkomacie 48 godzin.</div>
+        </div></div>
+      </div>
+      <div class="opt" data-m="salon" onclick="selDel(this)">
+        <div class="opt-head"><div class="radio"></div><div class="opt-ico">&#128722;</div>
+          <div class="opt-info"><span class="nm">Odbiór w salonie Cyfrowe.pl</span><span class="sub">Gdańsk, Katowice, Kraków, Łódź, Poznań, Warszawa</span></div><div class="opt-price">0 zł</div></div>
+        <div class="opt-body"><div class="opt-body-in">
+          <div class="salon" onclick="pickSalon(this,event)"><div><div class="nm">Gdańsk</div><div class="ad">ul. Łostowicka 25A &middot; pon–pt 10–19, sob 10–15</div></div></div>
+          <div class="salon" onclick="pickSalon(this,event)"><div><div class="nm">Kraków</div><div class="ad">ul. Pawia 5 (Galeria Krakowska) &middot; pon–sob 10–21</div></div></div>
+          <div class="salon" onclick="pickSalon(this,event)"><div><div class="nm">Warszawa</div><div class="ad">ul. Marszałkowska 27/35 &middot; pon–pt 10–19</div></div></div>
+          <div class="info-line">&#128274; Odbiór za darmo. Powiadomimy SMS-em, gdy zamówienie będzie gotowe do odbioru.</div>
+        </div></div>
+      </div>
+      <div class="group-title">Dostawa na adres &middot; wymaga adresu</div>
+      <div class="opt" data-m="dpd" onclick="selDel(this)">
+        <div class="opt-head"><div class="radio"></div><div class="opt-ico">&#128666;</div>
+          <div class="opt-info"><span class="nm">Kurier DPD</span><span class="sub">dostawa: jutro</span></div><div class="opt-price">15 zł</div></div>
+        <div class="opt-body"><div class="opt-body-in cour-form">
+          <div class="recipient-note">&#9993; Dane odbiorcy uzupełniliśmy Twoimi danymi. Zmień je, jeśli paczka ma trafić do innej osoby albo na firmę.</div>
+          <div class="row2"><div><label class="fl">Imię odbiorcy<b>*</b></label><input type="text" class="cour-imie"></div><div><label class="fl">Nazwisko odbiorcy<b>*</b></label><input type="text" class="cour-nazwisko"></div></div>
+          <label class="fl">Telefon odbiorcy<b>*</b></label><input type="tel" class="cour-telefon"><div class="note">Kurier może zadzwonić przed dostawą.</div>
+          <label class="fl">Firma (opcjonalnie — gdy paczka ma trafić na firmę)</label><input type="text" class="cour-firma" placeholder="Nazwa firmy">
+          <div class="row2"><div><label class="fl">Ulica<b>*</b></label><input type="text" class="cour-ulica"></div><div style="max-width:92px"><label class="fl">Nr domu<b>*</b></label><input type="text" class="cour-nrdomu"></div><div style="max-width:92px"><label class="fl">Nr lokalu</label><input type="text" class="cour-nrlok"></div></div>
+          <div class="row2"><div style="max-width:140px"><label class="fl">Kod pocztowy<b>*</b></label><input type="text" class="cour-kod" placeholder="00-000"></div><div><label class="fl">Miejscowość<b>*</b></label><input type="text" class="cour-miasto"></div></div>
+        </div></div>
+      </div>
+      <div class="opt" data-m="ups" onclick="selDel(this)">
+        <div class="opt-head"><div class="radio"></div><div class="opt-ico">&#128230;</div>
+          <div class="opt-info"><span class="nm">Kurier UPS</span><span class="sub">dostawa: jutro</span></div><div class="opt-price">17 zł</div></div>
+        <div class="opt-body"><div class="opt-body-in cour-form">
+          <div class="recipient-note">&#9993; Dane odbiorcy uzupełniliśmy Twoimi danymi. Zmień je, jeśli paczka ma trafić do innej osoby albo na firmę.</div>
+          <div class="row2"><div><label class="fl">Imię odbiorcy<b>*</b></label><input type="text" class="cour-imie"></div><div><label class="fl">Nazwisko odbiorcy<b>*</b></label><input type="text" class="cour-nazwisko"></div></div>
+          <label class="fl">Telefon odbiorcy<b>*</b></label><input type="tel" class="cour-telefon"><div class="note">Kurier może zadzwonić przed dostawą.</div>
+          <label class="fl">Firma (opcjonalnie — gdy paczka ma trafić na firmę)</label><input type="text" class="cour-firma" placeholder="Nazwa firmy">
+          <div class="row2"><div><label class="fl">Ulica<b>*</b></label><input type="text" class="cour-ulica"></div><div style="max-width:92px"><label class="fl">Nr domu<b>*</b></label><input type="text" class="cour-nrdomu"></div><div style="max-width:92px"><label class="fl">Nr lokalu</label><input type="text" class="cour-nrlok"></div></div>
+          <div class="row2"><div style="max-width:140px"><label class="fl">Kod pocztowy<b>*</b></label><input type="text" class="cour-kod" placeholder="00-000"></div><div><label class="fl">Miejscowość<b>*</b></label><input type="text" class="cour-miasto"></div></div>
+        </div></div>
+      </div>
+    </div>
+    <div class="summary">
+      <div class="sum-row"><span>Wartość zamówienia</span><span>1 025 zł</span></div>
+      <div class="sum-row"><span>Dostawa</span><span id="del-price">—</span></div>
+      <div class="sum-tot"><span>Do zapłaty</span><span id="tot2">1 025 zł</span></div>
+      <button class="btn" id="btn2" onclick="go(3)" disabled>Dalej: płatność</button>
+      <button class="btn btn-ghost" onclick="go(1)">Wróć do danych</button>
+    </div>
+  </div>
+  <div id="view3" class="hidden">
+    <div class="card">
+      <h2>Płatność</h2>
+      <p class="hint">Wybierz sposób płatności. Za chwilę zobaczysz podsumowanie przed potwierdzeniem.</p>
+      <div class="opt" data-p="blik" onclick="selPay(this)"><div class="opt-head"><div class="radio"></div><div class="opt-ico" style="background:#000;color:#fff">B</div><div class="opt-info"><span class="nm">BLIK</span><span class="sub">Kodem z aplikacji banku</span></div></div></div>
+      <div class="opt" data-p="karta" onclick="selPay(this)"><div class="opt-head"><div class="radio"></div><div class="opt-ico">&#128179;</div><div class="opt-info"><span class="nm">Karta płatnicza</span><span class="sub">Visa, Mastercard</span></div></div></div>
+      <div class="opt" data-p="przelew" onclick="selPay(this)"><div class="opt-head"><div class="radio"></div><div class="opt-ico">&#8646;</div><div class="opt-info"><span class="nm">Szybki przelew online</span><span class="sub">Pay-by-link – Twój bank</span></div></div></div>
+      <div class="opt" data-p="raty" onclick="selPay(this)"><div class="opt-head"><div class="radio"></div><div class="opt-ico" style="background:var(--red);color:#fff">&#8377;</div><div class="opt-info"><span class="nm">Raty</span><span class="sub">Credit Agricole, Santander</span></div></div></div>
+      <label class="consent"><input type="checkbox" id="zgoda"> <span>Oświadczam, że zapoznałem się z <a href="#">Regulaminem</a> i <a href="#">Zasadami sprzedaży</a> sklepu cyfrowe.pl oraz <a href="#">Polityką prywatności</a>. Wyrażam zgodę na przetwarzanie moich danych (imię, nazwisko, adres, telefon, e-mail) w celu realizacji zamówienia.</span></label>
+    </div>
+    <div class="summary">
+      <div class="sum-row"><span>Dostawa</span><span id="del-price3">—</span></div>
+      <div class="sum-tot"><span>Do zapłaty</span><span id="tot3">1 025 zł</span></div>
+      <button class="btn" id="btn3" onclick="finish()" disabled>Kupuję i płacę</button>
+      <button class="btn btn-ghost" onclick="go(2)">Wróć do dostawy</button>
+      <div class="trust">
+        <span><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg> Płatność szyfrowana</span>
+        <span><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg> 14 dni na zwrot</span>
+        <span><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M12 2 4 5v6c0 5 3.4 8.5 8 10 4.6-1.5 8-5 8-10V5z"/></svg> Gwarancja bezpieczeństwa</span>
+      </div>
+    </div>
+  </div>
+  <div id="view4" class="hidden">
+    <div class="card" style="text-align:center">
+      <div class="done-ico">&#10003;</div>
+      <h2>Dziękujemy, zamówienie złożone!</h2>
+      <p class="hint" style="margin-bottom:18px">Numer zamówienia: <b>#1274149</b> &middot; potwierdzenie wysłaliśmy na Twój e-mail.</p>
+      <div style="text-align:left">
+        <div class="conf-row"><span class="l">Sposób dostawy</span><span id="c-del">—</span></div>
+        <div class="conf-row"><span class="l">Odbiór / adres</span><span id="c-addr">—</span></div>
+        <div class="conf-row"><span class="l">Płatność</span><span id="c-pay">—</span></div>
+        <div class="conf-row"><span class="l">Do zapłaty</span><span id="c-tot">1 025 zł</span></div>
+      </div>
+      <button class="btn btn-ghost" style="max-width:240px;margin:18px auto 0" onclick="location.reload()">Wróć do sklepu</button>
+    </div>
+  </div>
+</div>
+<script>
+  const PRICES={paczkomat:14,salon:0,dpd:15,ups:17};
+  const NAMES={paczkomat:'InPost Paczkomat 24/7',salon:'Odbiór w salonie Cyfrowe.pl',dpd:'Kurier DPD',ups:'Kurier UPS'};
+  let state={del:null,pay:null,salon:null};
+  const base=1025;
+  function go(s){
+    for(let i=1;i<=4;i++)document.getElementById('view'+i).classList.toggle('hidden',i!==s);
+    document.querySelectorAll('#stepper .step').forEach(el=>{const n=+el.dataset.s;el.classList.toggle('active',n===s);el.classList.toggle('done',n<s);});
+    document.querySelectorAll('#stepper .step-bar').forEach((b,i)=>b.classList.toggle('done',i<s-1));
+    window.scrollTo({top:0,behavior:'smooth'});
+  }
+  function prefillCourier(card){
+    const map={'.cour-imie':'d-imie','.cour-nazwisko':'d-nazwisko','.cour-telefon':'d-tel'};
+    for(const sel in map){const f=card.querySelector(sel);const v=(document.getElementById(map[sel])||{}).value||'';if(f&&!f.value&&v)f.value=v;}
+  }
+  function selDel(el){
+    document.querySelectorAll('#view2 .opt').forEach(o=>o.classList.remove('sel'));
+    el.classList.add('sel');state.del=el.dataset.m;
+    if(el.querySelector('.cour-form'))prefillCourier(el);
+    const p=PRICES[state.del];
+    document.getElementById('del-price').textContent=p+' zł';
+    document.getElementById('del-price3').textContent=p+' zł';
+    const tot=(base+p)+' zł';
+    document.getElementById('tot2').textContent=tot;document.getElementById('tot3').textContent=tot;document.getElementById('c-tot').textContent=tot;
+    validate2();
+  }
+  function pickLocker(e){e.stopPropagation();document.getElementById('locker-picked').classList.add('vis');validate2();}
+  function pickSalon(el,e){e.stopPropagation();document.querySelectorAll('#view2 .salon').forEach(s=>s.classList.remove('sel'));el.classList.add('sel');state.salon=el.querySelector('.nm').textContent;validate2();}
+  function validate2(){
+    let ok=!!state.del;
+    if(state.del==='paczkomat')ok=document.getElementById('locker-picked').classList.contains('vis');
+    if(state.del==='salon')ok=!!state.salon;
+    document.getElementById('btn2').disabled=!ok;
+  }
+  function selPay(el){document.querySelectorAll('#view3 .opt').forEach(o=>o.classList.remove('sel'));el.classList.add('sel');state.pay=el.querySelector('.nm').textContent;validatePay();}
+  function validatePay(){document.getElementById('btn3').disabled=!(state.pay&&document.getElementById('zgoda').checked);}
+  document.getElementById('zgoda').addEventListener('change',validatePay);
+  function finish(){
+    document.getElementById('c-del').textContent=NAMES[state.del]||'—';
+    let addr='—';
+    if(state.del==='paczkomat')addr='WAW31N, ul. Siedmiogrodzka 11, Warszawa';
+    else if(state.del==='salon')addr='Salon '+(state.salon||'');
+    else addr='Adres podany przy dostawie';
+    document.getElementById('c-addr').textContent=addr;
+    document.getElementById('c-pay').textContent=state.pay||'—';
+    go(4);
+  }
+</script>
+</body>
+</html>
