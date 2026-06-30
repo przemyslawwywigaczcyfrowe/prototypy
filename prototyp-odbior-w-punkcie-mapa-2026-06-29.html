@@ -1,0 +1,425 @@
+<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Cyfrowe.pl - Metoda dostawy (prototyp: jedna mapa punktów odbioru)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Lato:wght@400;700;900&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<style>
+  :root{
+    --red:#DD0031; --ink:#1d1d1d; --grey:#8c8c8c; --grey2:#6f6f6f;
+    --line:#e4e4e4; --side:#f5f5f5; --green:#3aa635;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:'Lato','Segoe UI',Arial,sans-serif;color:var(--ink);background:#fff;-webkit-font-smoothing:antialiased}
+  a{color:inherit}
+  .wrap{max-width:1180px;margin:0 auto;padding:0 20px}
+
+  header{border-bottom:1px solid var(--line)}
+  .head{display:flex;align-items:center;gap:18px;padding:22px 0}
+  .logo-box{border:1.5px solid #111;padding:8px 14px;line-height:1}
+  .logo-box .l{font-weight:900;font-size:26px;letter-spacing:.5px}
+  .logo-box .l .ov{border-top:2px solid #111;padding-top:1px}
+  .tagline{font-size:11px;letter-spacing:1.5px;color:#444;font-weight:700;text-transform:uppercase;line-height:1.5}
+
+  .steps{display:flex;justify-content:center;gap:0;margin:30px 0 26px}
+  .step{display:flex;flex-direction:column;align-items:center;width:150px;position:relative}
+  .step .c{width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;background:#e7e7e7;color:#9a9a9a;z-index:2}
+  .step.done .c{background:#7d7d7d;color:#fff}
+  .step.active .c{background:#111;color:#fff}
+  .step .lb{margin-top:8px;font-size:13px;color:#9a9a9a}
+  .step.active .lb{color:#111;font-weight:700}
+  .step.done .lb{color:#6f6f6f}
+  .step:not(:first-child)::before{content:"";position:absolute;height:2px;background:var(--line);top:16px;left:-75px;width:150px;z-index:1}
+
+  .grid{display:grid;grid-template-columns:1fr 360px;gap:28px;padding-bottom:60px;align-items:start}
+  h1{font-size:22px;margin:4px 0 18px}
+
+  .opt{border:1px solid var(--line);border-radius:3px;margin-bottom:10px;background:#fff;cursor:pointer;transition:border-color .12s}
+  .opt:hover{border-color:#c9c9c9}
+  .opt.sel{border:2px solid #111}
+  .opt-head{display:flex;align-items:center;gap:14px;padding:15px 18px}
+  .radio{width:20px;height:20px;border-radius:50%;border:2px solid #bdbdbd;flex:0 0 auto;position:relative}
+  .opt.sel .radio{border-color:#111}
+  .opt.sel .radio::after{content:"";position:absolute;inset:3px;border-radius:50%;background:#111}
+  .tile{width:58px;height:40px;border-radius:4px;flex:0 0 auto;display:flex;align-items:center;justify-content:center;overflow:hidden}
+  .oi{flex:1 1 auto;min-width:0}
+  .oi .nm{font-weight:700;font-size:15px}
+  .oi .sub{font-size:13px;color:var(--grey);margin-top:2px}
+  .price{font-weight:700;font-size:15px;white-space:nowrap;padding-left:10px}
+
+  .body{display:none;border-top:1px solid var(--line);padding:18px}
+  .opt.sel .body{display:block}
+  .cols{display:grid;grid-template-columns:1fr 1fr;gap:24px}
+  .lbl{font-size:13px;color:var(--grey);margin-bottom:6px}
+  .val b{display:block}
+  .val{font-size:14px;line-height:1.5}
+  .chg{display:inline-flex;align-items:center;gap:6px;margin-top:12px;font-size:14px;font-weight:700;text-decoration:underline;cursor:pointer}
+  .chg svg{width:14px;height:14px}
+
+  .lg-inpost{background:#ffcc00;color:#1a1a1a;font-weight:900;font-size:13px;width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1}
+  .lg-inpost small{font-weight:700;font-size:7px;letter-spacing:.3px}
+  .lg-dpd{background:#dc0032;color:#fff;font-weight:900;font-size:17px;width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-style:italic}
+  .lg-ups{background:#341b14;color:#ffb500;font-weight:900;font-size:15px;width:100%;height:100%;display:flex;align-items:center;justify-content:center}
+  .lg-poczta{background:#e30613;color:#ffd200;font-weight:900;font-size:11px;width:100%;height:100%;display:flex;align-items:center;justify-content:center;text-align:center}
+  .lg-black{background:#111;color:#fff;width:100%;height:100%;display:flex;align-items:center;justify-content:center}
+
+  /* Point picker */
+  .picker .search{display:flex;gap:8px;margin-bottom:12px}
+  .picker .search input{flex:1;border:1px solid #cfcfcf;border-radius:3px;padding:11px 12px;font-size:14px;font-family:inherit}
+  .picker .search button{background:#111;color:#fff;border:0;border-radius:3px;padding:0 16px;font-weight:700;cursor:pointer;font-family:inherit}
+  .chips{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:12px}
+  .chip{border:1px solid #d4d4d4;border-radius:30px;padding:6px 13px;font-size:12.5px;cursor:pointer;background:#fff;display:inline-flex;align-items:center;gap:6px;user-select:none}
+  .chip .dot{width:9px;height:9px;border-radius:50%}
+  .chip.on{border-color:#111;background:#111;color:#fff}
+
+  .pmain{display:grid;grid-template-columns:minmax(0,310px) 1fr;gap:14px}
+  .plist{border:1px solid var(--line);border-radius:4px;max-height:368px;overflow:auto}
+  .prow{display:flex;gap:10px;align-items:center;padding:11px 12px;border-bottom:1px solid #f1f1f1;cursor:pointer}
+  .prow:last-child{border-bottom:0}
+  .prow:hover{background:#fafafa}
+  .prow.sel{background:#fff5f7;box-shadow:inset 3px 0 0 var(--red)}
+  .pdot{width:34px;height:26px;border-radius:4px;flex:0 0 auto;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:900;color:#fff}
+  .pmid{flex:1 1 auto;min-width:0}
+  .pname{font-size:13px;font-weight:700;line-height:1.25}
+  .paddr{font-size:12px;color:var(--grey);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .pbadge{font-size:10.5px;color:var(--grey2);margin-top:2px}
+  .pprice{font-size:13px;font-weight:700;white-space:nowrap}
+  .pcheck{color:var(--red);font-weight:900;margin-left:2px;display:none}
+  .prow.sel .pcheck{display:inline}
+  .pempty{padding:18px;color:var(--grey);font-size:13px;text-align:center}
+
+  #map{height:368px;border-radius:4px;border:1px solid var(--line);background:#e9eef0;z-index:0}
+  .leaflet-container{font-family:inherit}
+  .pin{width:26px;height:26px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center}
+  .pin.act{width:34px;height:34px;border-width:3px;z-index:1000}
+  .pin span{transform:rotate(45deg);font-size:10px;font-weight:900;color:#fff}
+
+  .chosen{margin-top:14px;border:1px solid var(--line);border-radius:4px;padding:14px;background:#fafafa}
+  .badge{display:inline-block;font-size:11px;font-weight:800;padding:2px 8px;border-radius:3px;color:#1a1a1a;margin-bottom:6px}
+  .muted{color:var(--grey)}
+
+  .side{background:var(--side);border-radius:4px;padding:22px 22px 24px}
+  .srow{display:flex;justify-content:space-between;font-size:14px;color:#444;margin-bottom:10px}
+  .pay{display:flex;justify-content:space-between;align-items:baseline;margin:14px 0 2px}
+  .pay .t{font-size:20px;font-weight:800}
+  .pay .v{font-size:26px;font-weight:800}
+  .pay .v sup{font-size:13px;font-weight:700;top:-.7em}
+  .pay .v .z{font-size:13px;font-weight:700}
+  .cta{display:block;width:100%;border:0;background:var(--red);color:#fff;font-size:16px;font-weight:700;padding:15px;border-radius:3px;margin:16px 0 4px;cursor:pointer;font-family:inherit;text-align:center}
+  .order-h{display:flex;justify-content:space-between;align-items:center;margin-top:22px;padding-top:16px;border-top:1px solid #e4e4e4;font-weight:700}
+  .prod{display:flex;gap:12px;margin-top:16px}
+  .thumb{width:64px;height:64px;border-radius:4px;background:#ededed;flex:0 0 auto;display:flex;align-items:center;justify-content:center;color:#bdbdbd}
+  .prod .pn{font-size:13px;line-height:1.4}
+  .ship24{font-size:12.5px;color:var(--green);margin-top:5px;display:flex;align-items:center;gap:6px}
+  .ship24::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--green)}
+
+  @media(max-width:980px){.grid{grid-template-columns:1fr}.step{width:84px}.step:not(:first-child)::before{left:-42px;width:84px}}
+  @media(max-width:680px){.pmain{grid-template-columns:1fr}.plist{max-height:240px}#map{height:280px}}
+</style>
+</head>
+<body>
+<header>
+  <div class="wrap head">
+    <div class="logo-box"><div class="l">cyfr<span class="ov">owe</span>.pl</div></div>
+    <div class="tagline">Lepsza fotografia<br/>Lepszy film</div>
+  </div>
+</header>
+
+<div class="wrap">
+  <div class="steps">
+    <div class="step done"><div class="c">&#10003;</div><div class="lb">Adres</div></div>
+    <div class="step active"><div class="c">2</div><div class="lb">Dostawa / Odbiór</div></div>
+    <div class="step"><div class="c">3</div><div class="lb">Płatność</div></div>
+    <div class="step"><div class="c">4</div><div class="lb">Gotowe</div></div>
+  </div>
+
+  <div class="grid">
+    <div>
+      <h1>Metoda dostawy</h1>
+      <div id="list">
+
+        <!-- ODBIÓR W PUNKCIE -->
+        <div class="opt sel" data-m="punkt" onclick="pick(this)">
+          <div class="opt-head">
+            <div class="radio"></div>
+            <div class="tile"><div class="lg-black">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M12 2C8.1 2 5 5.1 5 9c0 5.2 7 13 7 13s7-7.8 7-13c0-3.9-3.1-7-7-7z" fill="#fff"/><circle cx="12" cy="9" r="2.6" fill="#111"/></svg>
+            </div></div>
+            <div class="oi">
+              <div class="nm">Odbiór w punkcie</div>
+              <div class="sub">Paczkomaty, automaty i punkty: InPost, DPD, Żabka, Orlen, Poczta &middot; 1-2 dni robocze</div>
+            </div>
+            <div class="price" id="punkt-price">od 12,99 zł</div>
+          </div>
+          <div class="body" onclick="event.stopPropagation()">
+            <div class="picker">
+              <div class="search">
+                <input type="text" id="q" placeholder="Wpisz miasto, ulicę lub kod pocztowy" oninput="onSearch(this.value)"/>
+                <button type="button" onclick="onSearch(document.getElementById('q').value)">Szukaj</button>
+              </div>
+              <div class="chips" id="chips">
+                <div class="chip on" data-f="all" onclick="setFilter('all',this)">Wszystkie</div>
+                <div class="chip" data-f="inpost" onclick="setFilter('inpost',this)"><span class="dot" style="background:#ffcc00"></span>InPost</div>
+                <div class="chip" data-f="dpd" onclick="setFilter('dpd',this)"><span class="dot" style="background:#dc0032"></span>DPD</div>
+                <div class="chip" data-f="zabka" onclick="setFilter('zabka',this)"><span class="dot" style="background:#6fae44"></span>Żabka / Orlen</div>
+                <div class="chip" data-f="poczta" onclick="setFilter('poczta',this)"><span class="dot" style="background:#e30613"></span>Poczta</div>
+                <div class="chip" data-f="salon" onclick="setFilter('salon',this)"><span class="dot" style="background:#111"></span>Salon</div>
+              </div>
+
+              <div class="pmain">
+                <div class="plist" id="plist"><!-- lista punktów z JS --></div>
+                <div id="map"></div>
+              </div>
+
+              <div class="chosen" id="chosen">
+                <div class="cols">
+                  <div>
+                    <div class="lbl">Wybrany punkt odbioru</div>
+                    <div class="val">
+                      <span class="badge" id="ch-badge" style="background:#ffcc00">InPost</span>
+                      <b id="ch-name">Paczkomat WAW44BAPP</b>
+                      <span id="ch-addr">Mokotowska 71, 00-530 Warszawa</span><br/>
+                      <span class="muted" id="ch-desc">Za restauracją Mokotowska 69</span>
+                    </div>
+                  </div>
+                  <div>
+                    <div class="lbl">Odbierający</div>
+                    <div class="val"><b>Przemysław Wywigacz</b>601667055</div>
+                    <div class="chg">
+                      <svg viewBox="0 0 20 20" fill="none"><path d="M3 14.5V17h2.5l8-8L11 6.5l-8 8z" stroke="#111" stroke-width="1.5"/><path d="M13.5 4l2.5 2.5" stroke="#111" stroke-width="1.5"/></svg>
+                      Zmień dane odbierającego
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ODBIÓR W SALONIE (osobna forma) -->
+        <div class="opt" data-m="salon" data-cost="0" onclick="pick(this)">
+          <div class="opt-head">
+            <div class="radio"></div>
+            <div class="tile"><div class="lg-black">
+              <svg width="26" height="26" viewBox="0 0 24 24" fill="none"><rect x="3" y="6" width="18" height="13" rx="2" stroke="#fff" stroke-width="1.6"/><circle cx="12" cy="12.5" r="3.4" stroke="#fff" stroke-width="1.6"/><rect x="8" y="4" width="8" height="3" rx="1" fill="#fff"/></svg>
+            </div></div>
+            <div class="oi">
+              <div class="nm">Odbiór w salonie Cyfrowe.pl</div>
+              <div class="sub">Gdańsk, Katowice, Kraków, Łódź, Poznań, Warszawa &middot; 1 dzień roboczy</div>
+            </div>
+            <div class="price">0 zł</div>
+          </div>
+          <div class="body" onclick="event.stopPropagation()">
+            <div class="cols">
+              <div>
+                <div class="lbl">Adres salonu</div>
+                <div class="val"><b>Cyfrowe.pl Salon Gdańsk</b>ul. Kartuska 149 / 11<br/>80-138 Gdańsk<br/><span class="muted">pn-pt: 10:00-18:00</span></div>
+                <div class="chg">
+                  <svg viewBox="0 0 20 20" fill="none"><path d="M3 14.5V17h2.5l8-8L11 6.5l-8 8z" stroke="#111" stroke-width="1.5"/><path d="M13.5 4l2.5 2.5" stroke="#111" stroke-width="1.5"/></svg>
+                  Zmień salon
+                </div>
+              </div>
+              <div>
+                <div class="lbl">Odbierający</div>
+                <div class="val"><b>Przemysław Wywigacz</b>601667055</div>
+                <div class="chg">
+                  <svg viewBox="0 0 20 20" fill="none"><path d="M3 14.5V17h2.5l8-8L11 6.5l-8 8z" stroke="#111" stroke-width="1.5"/><path d="M13.5 4l2.5 2.5" stroke="#111" stroke-width="1.5"/></svg>
+                  Zmień
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- KURIERZY (bez zmian) -->
+        <div class="opt" data-m="dpd" data-cost="15" onclick="pick(this)">
+          <div class="opt-head">
+            <div class="radio"></div>
+            <div class="tile"><div class="lg-dpd">dpd</div></div>
+            <div class="oi"><div class="nm">Kurier DPD</div><div class="sub">1 dzień roboczy</div></div>
+            <div class="price">15,00 zł</div>
+          </div>
+          <div class="body" onclick="event.stopPropagation()">
+            <div class="lbl">Adres dostawy</div>
+            <div class="val"><b>Przemysław Wywigacz</b>Morska 6C / 18<br/>84-240 Reda<br/>601667055</div>
+            <div class="chg"><svg viewBox="0 0 20 20" fill="none"><path d="M3 14.5V17h2.5l8-8L11 6.5l-8 8z" stroke="#111" stroke-width="1.5"/><path d="M13.5 4l2.5 2.5" stroke="#111" stroke-width="1.5"/></svg>Zmień</div>
+          </div>
+        </div>
+
+        <div class="opt" data-m="inpost-k" data-cost="17" onclick="pick(this)">
+          <div class="opt-head">
+            <div class="radio"></div>
+            <div class="tile"><div class="lg-inpost">InPost<small>KURIER</small></div></div>
+            <div class="oi"><div class="nm">Kurier InPost</div><div class="sub">1 dzień roboczy</div></div>
+            <div class="price">17,00 zł</div>
+          </div>
+          <div class="body" onclick="event.stopPropagation()">
+            <div class="lbl">Adres dostawy</div>
+            <div class="val"><b>Przemysław Wywigacz</b>Morska 6C / 18<br/>84-240 Reda<br/>601667055</div>
+            <div class="chg"><svg viewBox="0 0 20 20" fill="none"><path d="M3 14.5V17h2.5l8-8L11 6.5l-8 8z" stroke="#111" stroke-width="1.5"/><path d="M13.5 4l2.5 2.5" stroke="#111" stroke-width="1.5"/></svg>Zmień</div>
+          </div>
+        </div>
+
+        <div class="opt" data-m="ups" data-cost="17" onclick="pick(this)">
+          <div class="opt-head">
+            <div class="radio"></div>
+            <div class="tile"><div class="lg-ups">ups</div></div>
+            <div class="oi"><div class="nm">Kurier UPS</div><div class="sub">1 dzień roboczy</div></div>
+            <div class="price">17,00 zł</div>
+          </div>
+          <div class="body" onclick="event.stopPropagation()">
+            <div class="lbl">Adres dostawy</div>
+            <div class="val"><b>Przemysław Wywigacz</b>Morska 6C / 18<br/>84-240 Reda<br/>601667055</div>
+            <div class="chg"><svg viewBox="0 0 20 20" fill="none"><path d="M3 14.5V17h2.5l8-8L11 6.5l-8 8z" stroke="#111" stroke-width="1.5"/><path d="M13.5 4l2.5 2.5" stroke="#111" stroke-width="1.5"/></svg>Zmień</div>
+          </div>
+        </div>
+
+        <div class="opt" data-m="pocztex" data-cost="19" onclick="pick(this)">
+          <div class="opt-head">
+            <div class="radio"></div>
+            <div class="tile"><div class="lg-poczta">Pocztex</div></div>
+            <div class="oi"><div class="nm">Kurier Pocztex</div><div class="sub">1 dzień roboczy</div></div>
+            <div class="price">19,00 zł</div>
+          </div>
+          <div class="body" onclick="event.stopPropagation()">
+            <div class="lbl">Adres dostawy</div>
+            <div class="val"><b>Przemysław Wywigacz</b>Morska 6C / 18<br/>84-240 Reda<br/>601667055</div>
+            <div class="chg"><svg viewBox="0 0 20 20" fill="none"><path d="M3 14.5V17h2.5l8-8L11 6.5l-8 8z" stroke="#111" stroke-width="1.5"/><path d="M13.5 4l2.5 2.5" stroke="#111" stroke-width="1.5"/></svg>Zmień</div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <aside class="side">
+      <div class="srow"><span>Wartość zamówienia</span><span>1 030,00 zł</span></div>
+      <div class="srow"><span>Zniżki</span><span>-154,50 zł</span></div>
+      <div class="srow"><span>Dostawa</span><span id="s-ship">14,90 zł</span></div>
+      <div class="pay"><span class="t">Do zapłaty</span><span class="v" id="s-pay">890<sup>40</sup> <span class="z">zł</span></span></div>
+      <button class="cta">Przejdź do płatności</button>
+      <div class="order-h"><span>Twoje zamówienie</span><span>&#9650;</span></div>
+      <div class="prod">
+        <div class="thumb"><svg width="30" height="30" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="8" stroke="#bdbdbd" stroke-width="1.6"/><circle cx="12" cy="12" r="3.4" stroke="#bdbdbd" stroke-width="1.6"/></svg></div>
+        <div>
+          <div class="pn">Obiektyw UŻYWANY Samyang 14 mm f/2.8 IF ED UMC Aspherical / Sony E s.n CHP12192</div>
+          <div class="ship24">Wysyłamy w 24h</div>
+        </div>
+      </div>
+    </aside>
+  </div>
+</div>
+
+<script>
+  function pick(el){
+    document.querySelectorAll('.opt').forEach(function(o){o.classList.remove('sel')});
+    el.classList.add('sel');
+    var cost = (el.dataset.m==='punkt') ? POINTS[selIdx].price : parseFloat(el.dataset.cost);
+    if(el.dataset.m==='punkt') setTimeout(fixMap,60);
+    updateSummary(cost);
+  }
+  function updateSummary(cost){
+    var total = (1030 - 154.50) + cost;
+    document.getElementById('s-ship').textContent = cost===0 ? '0 zł' : money(cost);
+    var z = Math.floor(total + 1e-6), gr = Math.round((total - z)*100); gr=(gr<10?'0':'')+gr;
+    document.getElementById('s-pay').innerHTML = z.toLocaleString('pl-PL')+'<sup>'+gr+'</sup> <span class="z">zł</span>';
+  }
+  function money(v){ var z=Math.floor(v+1e-6),gr=Math.round((v-z)*100);gr=(gr<10?'0':'')+gr;return z.toLocaleString('pl-PL')+','+gr+' zł'; }
+
+  var POINTS = [
+    {t:'inpost',c:'#ffcc00',lab:'IP',name:'Paczkomat WAW44BAPP',addr:'Mokotowska 71, 00-530 Warszawa',desc:'Za restauracją Mokotowska 69',price:14.90,badge:'InPost',ll:[52.2226,21.0190]},
+    {t:'inpost',c:'#ffcc00',lab:'IP',name:'Paczkomat WAW118A',addr:'Marszałkowska 84/92, 00-514 Warszawa',desc:'Przy wejściu do galerii',price:14.90,badge:'InPost',ll:[52.2255,21.0118]},
+    {t:'dpd',c:'#dc0032',lab:'DPD',name:'DPD Pickup - Krucza 16',addr:'Krucza 16/22, 00-526 Warszawa',desc:'Punkt obsługi, pon-sob',price:13.99,badge:'DPD Pickup',ll:[52.2271,21.0162]},
+    {t:'dpd',c:'#dc0032',lab:'BOX',name:'Automat DPD Box',addr:'al. Jerozolimskie 65/79, 00-697 Warszawa',desc:'Automat paczkowy 24/7',price:13.99,badge:'DPD',ll:[52.2284,21.0036]},
+    {t:'zabka',c:'#6fae44',lab:'Ż',name:'Żabka - Hoża 50',addr:'Hoża 50, 00-682 Warszawa',desc:'Orlen Paczka, codziennie 6-23',price:12.99,badge:'Żabka',ll:[52.2252,21.0146]},
+    {t:'zabka',c:'#6fae44',lab:'OP',name:'Automat Orlen Paczka',addr:'Wilcza 30, 00-544 Warszawa',desc:'Automat paczkowy 24/7',price:12.99,badge:'Orlen Paczka',ll:[52.2233,21.0126]},
+    {t:'poczta',c:'#e30613',lab:'PP',name:'Punkt Poczta / Pocztex',addr:'Świętokrzyska 31/33, 00-049 Warszawa',desc:'Urząd pocztowy',price:13.50,badge:'Poczta',ll:[52.2345,21.0086]},
+    {t:'salon',c:'#111',lab:'C',name:'Salon Cyfrowe.pl Warszawa',addr:'Marszałkowska 27/35, 00-639 Warszawa',desc:'pn-pt 10:00-18:00, odbiór za 0 zł',price:0,badge:'Salon',ll:[52.2209,21.0176]}
+  ];
+  var selIdx = 0, curFilter='all', curSearch='', map=null, markers=[];
+
+  function lightText(t){ return (t==='inpost'||t==='zabka'); }
+
+  function buildList(){
+    var html='';
+    POINTS.forEach(function(p,i){
+      html += '<div class="prow'+(i===selIdx?' sel':'')+'" data-i="'+i+'" data-t="'+p.t+'" onclick="selectPoint('+i+')">'
+        + '<div class="pdot" style="background:'+p.c+';color:'+(lightText(p.t)?'#1a1a1a':'#fff')+'">'+p.lab+'</div>'
+        + '<div class="pmid"><div class="pname">'+p.name+'</div><div class="paddr">'+p.addr+'</div><div class="pbadge">'+p.badge+'</div></div>'
+        + '<div style="text-align:right"><div class="pprice">'+(p.price===0?'0 zł':money(p.price))+'</div><span class="pcheck">✓ wybrany</span></div>'
+        + '</div>';
+    });
+    document.getElementById('plist').innerHTML = html;
+  }
+
+  function selectPoint(i){
+    selIdx = i;
+    var p = POINTS[i];
+    document.querySelectorAll('.prow').forEach(function(r){ r.classList.toggle('sel', +r.dataset.i===i); });
+    var b=document.getElementById('ch-badge');
+    b.textContent=p.badge; b.style.background=p.c; b.style.color=lightText(p.t)?'#1a1a1a':'#fff';
+    document.getElementById('ch-name').textContent=p.name;
+    document.getElementById('ch-addr').textContent=p.addr;
+    document.getElementById('ch-desc').textContent=p.desc;
+    document.getElementById('punkt-price').textContent = p.price===0?'0 zł':money(p.price);
+    if(document.querySelector('.opt[data-m="punkt"]').classList.contains('sel')) updateSummary(p.price);
+    // mapa: podświetl i wycentruj
+    markers.forEach(function(m,k){ if(m._icon){ m._icon.querySelector('.pin').classList.toggle('act', k===i); } });
+    if(map){ map.setView(p.ll, 15, {animate:true}); if(markers[i]) markers[i].openTooltip(); }
+    // przewiń listę do wybranego
+    var row=document.querySelector('.prow[data-i="'+i+'"]'); if(row) row.scrollIntoView({block:'nearest'});
+  }
+
+  function pinIcon(p,act){
+    return L.divIcon({className:'',html:'<div class="pin'+(act?' act':'')+'" style="background:'+p.c+'"><span style="color:'+(lightText(p.t)?'#1a1a1a':'#fff')+'">'+p.lab+'</span></div>',iconSize:[26,26],iconAnchor:[13,26]});
+  }
+
+  function applyFilters(){
+    var anyVisible=false;
+    POINTS.forEach(function(p,i){
+      var vis=(curFilter==='all'||p.t===curFilter) && (curSearch===''||(p.name+' '+p.addr+' '+p.badge).toLowerCase().indexOf(curSearch)>-1);
+      var row=document.querySelector('.prow[data-i="'+i+'"]'); if(row) row.style.display=vis?'':'none';
+      if(map && markers[i]){ if(vis){ if(!map.hasLayer(markers[i])) markers[i].addTo(map); } else { if(map.hasLayer(markers[i])) map.removeLayer(markers[i]); } }
+      if(vis) anyVisible=true;
+    });
+    var pl=document.getElementById('plist');
+    var empt=pl.querySelector('.pempty');
+    if(!anyVisible){ if(!empt){ var d=document.createElement('div'); d.className='pempty'; d.textContent='Brak punktów dla wybranego filtra.'; pl.appendChild(d);} }
+    else if(empt){ empt.remove(); }
+  }
+  function setFilter(f,chip){
+    curFilter=f;
+    document.querySelectorAll('.chip').forEach(function(c){c.classList.remove('on')});
+    chip.classList.add('on');
+    applyFilters();
+  }
+  function onSearch(v){ curSearch=(v||'').toLowerCase().trim(); applyFilters(); }
+
+  function fixMap(){ if(map) map.invalidateSize(); }
+
+  function initMap(){
+    buildList();
+    if(!window.L){
+      document.getElementById('map').innerHTML='<div style="padding:20px;color:#8c8c8c;font-size:13px">Podgląd mapy wymaga internetu. Punkty wszystkich sieci wybierzesz z listy obok - to symulacja docelowego ekranu.</div>';
+      selectPoint(0); updateSummary(14.90); return;
+    }
+    map=L.map('map',{scrollWheelZoom:false}).setView([52.2245,21.0150],14);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; OpenStreetMap'}).addTo(map);
+    POINTS.forEach(function(p,i){
+      var m=L.marker(p.ll,{icon:pinIcon(p,i===selIdx)});
+      m.bindTooltip(p.badge+' &middot; '+p.name,{direction:'top'});
+      m.on('click',function(){ selectPoint(i); });
+      m.addTo(map); markers.push(m);
+    });
+    selectPoint(0); updateSummary(14.90);
+    setTimeout(fixMap,250);
+  }
+
+  window.addEventListener('load', initMap);
+</script>
+</body>
+</html>
